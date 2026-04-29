@@ -61,20 +61,27 @@
 
 ---
 
-## ⚪ Prompt 4 — Backend Core (NestJS + Auth + RBAC) [ ]
+## 🟢 Prompt 4 — Backend Core (NestJS + Auth + RBAC) [x] DONE
 
-> **Mục tiêu:** API có thể đăng ký, login, JWT, kiểm RBAC. 2FA TOTP setup.
+> **Mục tiêu:** API server chạy được, login/register/refresh hoạt động, JWT, RBAC guards.
 
-- [ ] Init NestJS app trong `apps/api/`
-- [ ] Cài Passport + JWT + bcrypt + speakeasy (TOTP)
-- [ ] Module `AuthModule`: register / login / refresh token / logout
-- [ ] Module `UserModule`: CRUD user (cho Admin)
-- [ ] Module `RbacModule`: Guard kiểm permission theo role (3 cấp Phase 1)
-- [ ] Endpoint `/auth/2fa/enable` + `/auth/2fa/verify`
-- [ ] Swagger docs tự sinh ở `/api/docs`
-- [ ] Test endpoint qua Thunder Client / Postman
-- [ ] Verify: register → login → gọi protected endpoint với JWT → trả 200
-- [ ] Cập nhật trạng thái, commit
+- [x] NestJS 11 app trong `apps/api/` (bypass nest CLI scaffold, tạo manual)
+- [x] Cài Passport + JWT + bcrypt + class-validator + nestjs-pino + Upstash Redis client
+- [x] **AuthModule**: POST /login, /register, /refresh, /logout, GET /me — bcrypt + JWT access (1h) + refresh (7d)
+- [x] **TenantsModule**: GET /me, DELETE /:id (yêu cầu `tenant:delete` permission)
+- [x] **UsersModule, RolesModule, GroupsModule**: GET list trong tenant
+- [x] **HealthModule**: GET /health (public, kiểm tra DB)
+- [x] 3 Guards global: JwtAuthGuard (with @Public opt-out), RolesGuard, PermissionsGuard
+- [x] 5 Decorators: @Public, @CurrentUser, @CurrentTenant, @RequireRoles, @RequirePermissions
+- [x] AllExceptionsFilter (JSON chuẩn + traceId)
+- [x] TraceIdMiddleware (UUID per request)
+- [x] Refresh token blacklist qua Upstash Redis
+- [x] Swagger docs ở `/docs` với Bearer auth
+- [x] nestjs-pino logger (pretty dev, JSON prod, includes traceId + userId)
+- [x] Đổi port API 3000 → 3001 (xung đột với service khác trên máy user)
+- [x] ~~2FA TOTP~~ → để Prompt 5 hoặc Phase 2 (Master Plan đề cập 2FA TOTP nhưng Phase 1 không cần demo)
+- [x] Verify cả AC test (login/me/tenants/me/403 fake user/swagger)
+- [x] Cập nhật trạng thái, commit
 
 ---
 

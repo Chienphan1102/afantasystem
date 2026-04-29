@@ -4,11 +4,40 @@
   "private": true,
   "description": "AFANTA — Backend API (NestJS)",
   "scripts": {
-    "dev": "echo 'TODO: NestJS dev (Prompt 4)'",
-    "build": "echo 'TODO: NestJS build (Prompt 4)'",
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
     "test": "echo 'no tests yet'",
     "lint": "eslint src --ext .ts"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.19",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/swagger": "^11.4.2",
+    "@prisma/client": "^6.19.3",
+    "@upstash/redis": "^1.37.0",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "nestjs-pino": "^4.6.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.21",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/uuid": "^11.0.0",
+    "pino-pretty": "^13.1.3"
+  }
 }

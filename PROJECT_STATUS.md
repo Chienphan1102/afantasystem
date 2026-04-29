@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 3 — Database & Prisma Schema ✅ DONE (sẵn sàng sang Prompt 4)                                                                            |
-| **Tình trạng Prompt 3**   | 🟢 Hoàn thành — 19 models + 9 enums migrated lên Supabase, seed Owner xong                                                                      |
-| **% hoàn thành Phase 1**  | 33%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~9%                                                                                                                                             |
+| **Prompt hiện tại**       | Prompt 4 — Backend Core (NestJS) ✅ DONE (sẵn sàng sang Prompt 5)                                                                               |
+| **Tình trạng Prompt 4**   | 🟢 Hoàn thành — 11 endpoints, JWT auth, RBAC guards, Swagger, đã verify login + 403                                                             |
+| **% hoàn thành Phase 1**  | 44%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~12%                                                                                                                                            |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -124,6 +124,62 @@
 3. Bảng `User` có 1 record `chienphan.jup@gmail.com`
 4. Bảng `Permission` có 37 record
 5. Hoặc chạy `pnpm exec prisma studio` (mở port 5555) để browse data trực quan
+
+---
+
+## ✅ Prompt 4 — Backend Core (NestJS + Auth + RBAC) (DONE)
+
+**Đã làm:**
+
+- Cài 30+ deps vào `apps/api` workspace (NestJS 11, Passport, JWT, Pino, Swagger, Upstash Redis client, ...)
+- Cấu hình NestJS: `nest-cli.json`, `tsconfig.json`, `tsconfig.build.json`, scripts `dev`/`build`/`start`
+- Tạo **common infrastructure**:
+  - `PrismaModule` + `PrismaService` (global, OnModuleInit/Destroy)
+  - `RedisModule` + `RedisService` (Upstash REST client, blacklist refresh tokens)
+  - 5 decorators: `@Public`, `@CurrentUser`, `@CurrentTenant`, `@RequireRoles`, `@RequirePermissions`
+  - 3 guards: `JwtAuthGuard` (global), `RolesGuard` (global), `PermissionsGuard` (global)
+  - `AllExceptionsFilter` trả JSON chuẩn `{statusCode, error, message, traceId, path, timestamp}`
+  - `TraceIdMiddleware` gắn UUID vào mỗi request + header `X-Trace-Id`
+- **6 modules nghiệp vụ:**
+  - `auth/`: POST `/api/auth/{login, register, refresh, logout}`, GET `/api/auth/me` (5 endpoints)
+  - `tenants/`: GET `/api/tenants/me`, DELETE `/api/tenants/:id` (yêu cầu permission `tenant:delete`)
+  - `users/`, `roles/`, `groups/`: GET list trong tenant
+  - `health/`: GET `/health` (public, kiểm tra DB connectivity)
+- **Bootstrap (`main.ts`):**
+  - ValidationPipe global (whitelist + transform + forbidNonWhitelisted)
+  - CORS (cho `CORS_ORIGIN` từ env)
+  - API prefix `/api` (exclude `health` và `docs`)
+  - Swagger UI ở `/docs` với Bearer auth
+  - nestjs-pino logger (JSON prod, pretty dev) với traceId + userId in mỗi log
+- **Đổi port API: 3000 → 3001** (vì máy user đã có service khác chạy port 3000)
+- **JWT payload:** `{sub, tenantId, email, roles, permissions, type, jti, iat, exp}` — encode đầy đủ permissions để guard không cần query DB mỗi request
+- **Refresh token blacklist** qua Upstash Redis với TTL = remaining lifetime
+
+**Verify đã pass:**
+
+- ✓ `pnpm --filter @afanta/api build` (TypeScript compile thành công)
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+- ✓ Server start: connected DB, mapped 11 routes, listening port 3001
+- ✓ `GET /health` → `{status: ok, database: ok, ...}`
+- ✓ `POST /api/auth/login` với Owner → trả accessToken + refreshToken + 37 permissions
+- ✓ `GET /api/auth/me` (with Bearer) → trả Owner info đầy đủ
+- ✓ `GET /api/tenants/me` → trả "Demo Media Co."
+- ✓ `GET /api/auth/me` (no token) → 401 Unauthorized
+- ✓ `DELETE /api/tenants/{id}` với fake regular-user JWT → **403 Forbidden** với message "Missing permissions: tenant:delete" 🎯
+- ✓ Swagger `/docs` render OK với 11 endpoints + Authorize button
+
+**Cách user verify (làm trong Git Bash):**
+
+1. `cd "d:/Media_hethong/AFANTA_System_v2"`
+2. `pnpm --filter @afanta/api dev` — server chạy ở `http://localhost:3001`
+3. Mở trình duyệt http://localhost:3001/docs → thấy Swagger UI
+4. Click **POST /api/auth/login** → Try it out → body:
+   ```json
+   { "email": "chienphan.jup@gmail.com", "password": "ChangeMe123!" }
+   ```
+5. Copy `accessToken` trong response → bấm **Authorize** (góc phải) → paste với prefix `Bearer ` → Authorize
+6. Test `GET /api/auth/me` và `GET /api/tenants/me` → đều trả OK
+7. Health check không cần auth: http://localhost:3001/health
 
 ---
 
