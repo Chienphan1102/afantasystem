@@ -21,11 +21,11 @@ export function Topbar({ onOpenMobileMenu }: { onOpenMobileMenu?: () => void }) 
   const { t, i18n } = useTranslation('common');
   const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
-  const { user, refreshToken, clear } = useAuthStore((s) => ({
-    user: s.user,
-    refreshToken: s.refreshToken,
-    clear: s.clear,
-  }));
+  // Use individual selectors — Zustand v5 compares with Object.is, so returning
+  // a fresh object literal from a selector causes infinite re-renders.
+  const user = useAuthStore((s) => s.user);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const clear = useAuthStore((s) => s.clear);
 
   const initials = (user?.fullName ?? user?.email ?? 'AF')
     .split(/[\s@]+/)
