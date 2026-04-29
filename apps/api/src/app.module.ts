@@ -21,6 +21,7 @@ import { HealthModule } from './modules/health/health.module';
 import { PlatformAccountsModule } from './modules/platform-accounts/platform-accounts.module';
 import { ChannelsModule } from './modules/channels/channels.module';
 import { ScrapeJobsModule } from './modules/scrape-jobs/scrape-jobs.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ScrapeJobsModule } from './modules/scrape-jobs/scrape-jobs.module';
     ScrapeJobsModule,
     PlatformAccountsModule,
     ChannelsModule,
+    DashboardModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

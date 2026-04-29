@@ -9,6 +9,7 @@ import { DashboardPage } from '@/pages/dashboard-page';
 import { AccountsPage } from '@/pages/accounts-page';
 import { ChannelsPage } from '@/pages/channels-page';
 import { ChannelDetailPage } from '@/pages/channel-detail-page';
+import { SettingsPage } from '@/pages/settings-page';
 import { PlaceholderPage } from '@/pages/placeholder-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +41,7 @@ export default function App() {
             path="/reports"
             element={<PlaceholderPage title={t('nav.reports')} description="Phase 2." />}
           />
-          <Route path="/settings/*" element={<PlaceholderPage title={t('nav.settings')} />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

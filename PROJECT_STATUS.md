@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 8 — YouTube Adapter + Worker ✅ DONE (sẵn sàng sang Prompt 9)                                                                            |
-| **Tình trạng Prompt 8**   | 🟢 Hoàn thành — YouTubeAdapter + scrape pipeline + ChannelsModule + Frontend list/detail                                                        |
-| **% hoàn thành Phase 1**  | 88%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~22%                                                                                                                                            |
+| **Prompt hiện tại**       | Prompt 9 — Dashboard + Demo ✅ DONE (PHASE 1 COMPLETE 🎉)                                                                                       |
+| **Tình trạng Phase 1**    | 🎉 **HOÀN THÀNH 100%** — MVP working end-to-end, sẵn sàng Phase 2                                                                               |
+| **% hoàn thành Phase 1**  | **100% ✅**                                                                                                                                     |
+| **% hoàn thành cả dự án** | ~25% (Phase 2-4 còn ~9 tháng)                                                                                                                   |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -421,6 +421,55 @@ pnpm --filter @afanta/web dev
 7. Bấm **Chi tiết** → trang `/channels/:id` thấy 2 stat cards + line chart (sau 2+ scans) + table top 10 videos với thumbnail
 8. Bấm **Quét lại** trên kênh → toast "Đã đưa vào hàng đợi" → 30-60s sau số liệu update
 9. Vào Supabase Table Editor → bảng `ChannelInsight` thấy nhiều rows (mỗi lần scan 1 row), bảng `ScrapeJob` thấy status SUCCESS
+
+---
+
+## 🎉 Prompt 9 — Dashboard MVP + Demo (PHASE 1 COMPLETE)
+
+**Đã làm:**
+
+- **Backend `DashboardModule`** (3 endpoints aggregate stats):
+  - `GET /api/dashboard/stats`: tổng kênh + tổng subscribers + scans 24h + unread alerts
+  - `GET /api/dashboard/activity`: 10 scan jobs gần nhất với detail
+  - `GET /api/dashboard/trend?days=30`: tổng subscribers theo ngày (latest snapshot per channel/day)
+- **Frontend Dashboard refactor** (`pages/dashboard-page.tsx`):
+  - 4 stat cards với data thật (Tổng kênh, Tổng followers, Quét 24h, Alert chưa đọc)
+  - LineChart subscribers theo ngày (refetch 60s)
+  - Card "Hoạt động gần đây" — list 10 jobs với link tới channel (refetch 10s)
+- **Frontend Settings page** (`pages/settings-page.tsx`):
+  - Tab Hồ sơ: email, fullName, role, tenantId (read-only Phase 1)
+  - Tab Tuỳ chỉnh: language toggle (VI/EN) + theme toggle (Light/Dark/System)
+  - Tab Bảo mật: button "Xoá master password khỏi RAM" + Phase 2 placeholder
+  - Tab Team: placeholder Phase 2
+- **Error Boundary** (`components/error-boundary.tsx`):
+  - Wrap toàn app trong `main.tsx`
+  - Fallback UI thân thiện với stack trace details (collapse) + reload button
+- **Tài liệu cuối Phase 1:**
+  - `USER_GUIDE.md` (250+ dòng): cài đặt, khởi động, hướng dẫn 9 bước E2E, troubleshooting, FAQ — TIẾNG VIỆT
+  - `PHASE1_RETROSPECTIVE.md`: 6 win + 8 lesson + 15 trade-off documented + Phase 2 roadmap
+
+**Trade-offs Phase 1 (đẩy Phase 2):**
+
+- ❌ ~~WebSocket realtime~~ → TanStack Query refetchInterval 10s/30s đủ
+- ❌ ~~Cron 6h auto-rescan~~ → Zero-Knowledge cần master password runtime; Phase 2 implement scrape token
+- ❌ ~~Onboarding wizard 4 bước~~ → USER_GUIDE.md đủ
+- ❌ ~~Notification center bell~~ → chưa có alerts data
+- ❌ ~~2FA TOTP setup UI~~ → Phase 2
+- ❌ ~~Settings Team/Billing tabs~~ → Phase 2/3
+- ❌ ~~E2E test Playwright tự động~~ → Phase 2 (Phase 1 đã verify thủ công)
+
+**Verify cuối Phase 1:**
+
+- ✓ `pnpm --filter @afanta/api build` (nest build OK)
+- ✓ `pnpm --filter @afanta/web build` (vite build 1.18s, gzip 366KB)
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` ALL PASS
+- ✓ Server start: **22 endpoints** total (3 dashboard mới)
+- ✓ `GET /api/dashboard/stats` (with Bearer) → trả `{totalChannels:0, totalSubscribers:"0", ...}`
+- ✓ Swagger `/docs` hiển thị tag "Dashboard"
+
+---
+
+## 🏁 Phase 1 — TỔNG KẾT
 
 App chạy được trên máy local, demo được cho khách đầu tiên với:
 
