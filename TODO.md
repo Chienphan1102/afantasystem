@@ -104,20 +104,26 @@
 
 ---
 
-## ⚪ Prompt 6 — Frontend Core (Vite + React + Tailwind + i18n + Theme) [ ]
+## 🟢 Prompt 6 — Frontend Core (Vite + React + Tailwind + i18n + Theme) [x] DONE
 
-> **Mục tiêu:** App React chạy được, có sidebar + topbar, login form, theme Light, i18n tiếng Việt.
+> **Mục tiêu:** App React chạy được, layout đầy đủ, login → dashboard, i18n VI/EN, theme Light/Dark/System.
 
-- [ ] Init Vite + React + TS trong `apps/web/`
-- [ ] Cấu hình TailwindCSS + shadcn/ui + import font
-- [ ] Setup React Router 6 với layout: `AuthLayout` (login/register) + `AppLayout` (sidebar/topbar)
-- [ ] Setup react-i18next với namespace `common.json` + `auth.json` (chỉ tiếng Việt Phase 1)
-- [ ] Setup theme provider Light mode (Dark mode để Phase 2)
-- [ ] Trang Login: form với React Hook Form + Zod, gọi API `/auth/login`
-- [ ] Lưu JWT vào httpOnly cookie hoặc localStorage (sẽ thảo luận)
-- [ ] TanStack Query setup với base URL từ env
-- [ ] Verify: chạy `pnpm dev`, mở http://localhost:5173, login thành công, thấy AppLayout
-- [ ] Cập nhật trạng thái, commit
+- [x] Vite 8 + React 18 + TypeScript strict trong `apps/web/`
+- [x] TailwindCSS v3.4 + CSS variables theme (light + dark) theo G.2 Master Plan
+- [x] 8 shadcn-style UI components viết tay: Button, Input, Label, Card, Avatar, DropdownMenu, Separator, Skeleton
+- [x] React Router 7 + AuthLayout + AppLayout (Sidebar + Topbar + responsive drawer mobile)
+- [x] react-i18next với 3 namespaces (common/auth/dashboard) — VI + EN
+- [x] ThemeProvider Light/Dark/System với prefers-color-scheme listener
+- [x] Login form với React Hook Form + Zod + sonner toast
+- [x] API client axios + interceptors (auto-refresh trên 401)
+- [x] Zustand auth store (persist localStorage)
+- [x] ProtectedRoute redirect logic
+- [x] TanStack Query setup
+- [x] Dashboard placeholder: 4 stat cards + Recharts LineChart + empty state
+- [x] 404 page
+- [x] Build production OK: 1.13s, gzip 345KB
+- [x] Verify: API + Web cùng chạy, login flow E2E, i18n toggle, theme switch, responsive
+- [x] Cập nhật trạng thái, commit
 
 ---
 

@@ -1,0 +1,40 @@
+{
+  "appName": "AFANTA",
+  "tagline": "Omni-Channel Platform cho doanh nghiệp Media",
+  "welcome": "Chào mừng",
+  "signIn": "Đăng nhập",
+  "signOut": "Đăng xuất",
+  "loading": "Đang tải...",
+  "error": "Đã xảy ra lỗi",
+  "save": "Lưu",
+  "cancel": "Huỷ",
+  "delete": "Xoá",
+  "edit": "Sửa",
+  "search": "Tìm kiếm...",
+  "search_placeholder": "Tìm kênh, user, lệnh...",
+  "settings": "Cài đặt",
+  "profile": "Hồ sơ",
+  "language": "Ngôn ngữ",
+  "theme": "Chủ đề",
+  "theme_light": "Sáng",
+  "theme_dark": "Tối",
+  "theme_system": "Theo hệ thống",
+  "nav": {
+    "dashboard": "Tổng quan",
+    "channels": "Kênh",
+    "accounts": "Tài khoản đã login",
+    "reports": "Báo cáo",
+    "settings": "Cài đặt"
+  },
+  "user_menu": {
+    "profile": "Hồ sơ của tôi",
+    "settings": "Cài đặt",
+    "team": "Quản lý team",
+    "billing": "Thanh toán",
+    "logout": "Đăng xuất"
+  },
+  "empty_state": {
+    "no_data": "Chưa có dữ liệu",
+    "cta": "Bắt đầu thêm dữ liệu đầu tiên"
+  }
+}

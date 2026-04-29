@@ -1,0 +1,13 @@
+{
+  "title": "Tổng quan",
+  "subtitle": "Số liệu tổng hợp toàn bộ kênh của bạn",
+  "stats": {
+    "total_channels": "Tổng kênh",
+    "total_followers": "Tổng followers",
+    "scans_today": "Quét hôm nay",
+    "unread_alerts": "Alert chưa đọc"
+  },
+  "growth_chart": "Tăng trưởng followers (30 ngày gần nhất)",
+  "top_channels": "Top 10 kênh",
+  "no_channels_yet": "Chưa có kênh nào — thêm kênh đầu tiên để bắt đầu"
+}

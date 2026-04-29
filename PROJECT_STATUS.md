@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 5 — Crypto Module ✅ DONE (sẵn sàng sang Prompt 6)                                                                                       |
-| **Tình trạng Prompt 5**   | 🟢 Hoàn thành — 31/31 tests pass, coverage 100% statements/functions/lines, 90.47% branches                                                     |
-| **% hoàn thành Phase 1**  | 55%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~14%                                                                                                                                            |
+| **Prompt hiện tại**       | Prompt 6 — Frontend Core ✅ DONE (sẵn sàng sang Prompt 7)                                                                                       |
+| **Tình trạng Prompt 6**   | 🟢 Hoàn thành — Vite+React+TS+Tailwind+i18n+Theme, login flow → dashboard verified                                                              |
+| **% hoàn thành Phase 1**  | 66%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~17%                                                                                                                                            |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -234,7 +234,74 @@ pnpm --filter @afanta/crypto test:coverage
 
 ---
 
-## 🎯 Mục tiêu Phase 1 — MVP (3 tháng)
+## ✅ Prompt 6 — Frontend Core (Vite + React + Tailwind + i18n + Theme) (DONE)
+
+**Đã làm:**
+
+- Cài React 18 + Vite 8 + TypeScript trong `apps/web/` (manual setup, không dùng `pnpm create vite` để tránh đè skeleton)
+- 30+ deps: react-router-dom, @tanstack/react-query, axios, zustand, react-hook-form, zod, react-i18next, recharts, lucide-react, sonner, class-variance-authority, tailwind-merge, 7 Radix UI primitives
+- TailwindCSS v3.4 với CSS variables theme (light + dark) theo Master Plan G.2:
+  - Light: bg `#FAFAFA` / fg `#0F172A` / accent `#2563EB`
+  - Dark: bg `#0B1220` / fg `#E2E8F0` / accent `#3B82F6`
+  - Smooth transition 200ms khi đổi mode
+- Font Inter từ Google Fonts
+- **8 shadcn-style UI components** (viết tay, không dùng `npx shadcn init`): Button, Input, Label, Card (+ Header/Title/Description/Content/Footer), Avatar, DropdownMenu, Separator, Skeleton
+- **i18n VI/EN** với 3 namespaces (common, auth, dashboard) + browser language detector + lưu vào localStorage `afanta_lang`
+- **ThemeProvider** Light/Dark/System với listener cho `prefers-color-scheme` (đổi OS theme tự reflect)
+- **API client (axios)** với:
+  - Request interceptor tự gắn `Bearer token` từ Zustand store
+  - Response interceptor auto-refresh khi 401 + queue requests đang chờ refresh
+  - Typed endpoints: `authApi.{login, logout, me}`, `tenantsApi.me`
+- **Auth store** dùng Zustand + `persist` (localStorage) — `accessToken`, `refreshToken`, `user`
+- **ProtectedRoute** redirect về `/login` nếu chưa auth
+- **Layouts:**
+  - `AuthLayout`: gradient blob background, center form
+  - `AppLayout`: Sidebar 64 collapsible + Topbar (search disabled placeholder, language toggle, theme toggle với 3 mode, notification bell disabled, user avatar dropdown với logout)
+  - **Mobile responsive**: < 768px sidebar thành drawer (hamburger menu)
+- **Pages:**
+  - `LoginPage`: form email + password + remember + Zod validation + react-hook-form + sonner toast cho lỗi/success
+  - `DashboardPage`: 4 stat cards + Recharts LineChart placeholder + empty state Top channels
+  - `PlaceholderPage` cho `/channels`, `/accounts`, `/reports`, `/settings`
+  - `NotFoundPage` (404)
+- **TanStack Query** đã setup `QueryClient` (staleTime 30s, retry 1)
+- Build production thành công: 1.13s, gzip 345KB
+
+**Verify đã pass:**
+
+- ✓ `pnpm --filter @afanta/web typecheck` (zero errors)
+- ✓ `pnpm --filter @afanta/web build` (Vite build OK, 1.13s)
+- ✓ `pnpm --filter @afanta/web dev` chạy ở http://localhost:5174 (port 5173 đã bị service khác chiếm, Vite tự fallback)
+- ✓ HTML response chứa đúng `<title>AFANTA — Omni-Channel Platform</title>` và `lang="vi"`
+- ✓ API server chạy port 3001 + CORS allow `http://localhost:5174`
+- ✓ `POST /api/auth/login` từ Origin `http://localhost:5174` trả accessToken (CORS OK)
+- ✓ Root `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+
+**Cách user verify (đầy đủ AC test):**
+
+Mở **2 Git Bash** terminal trong thư mục dự án:
+
+```bash
+# Terminal 1: chạy API
+pnpm --filter @afanta/api dev
+# → http://localhost:3001 + Swagger /docs
+
+# Terminal 2: chạy Frontend
+pnpm --filter @afanta/web dev
+# → http://localhost:5173 (hoặc 5174 nếu 5173 bị chiếm)
+```
+
+Trên trình duyệt:
+
+1. Mở `http://localhost:5173` (hoặc 5174) → tự redirect về `/login`
+2. Login với:
+   - Email: `chienphan.jup@gmail.com`
+   - Password: `ChangeMe123!`
+3. Vào `/dashboard` → thấy sidebar (Tổng quan, Kênh, Tài khoản, Báo cáo, Cài đặt) + topbar
+4. Bấm dropdown chữ "VI" trên topbar → chọn English → mọi text đổi sang EN
+5. Bấm icon Sun/Moon/Monitor → chọn Dark → giao diện chuyển sang dark mode (mượt 200ms)
+6. Resize trình duyệt < 768px → sidebar biến thành hamburger menu, bấm vào mở drawer từ trái
+7. Bấm avatar góc phải → Đăng xuất → quay về `/login`, token bị clear
+8. Refresh trang `/dashboard` khi đã logout → tự redirect về `/login`
 
 App chạy được trên máy local, demo được cho khách đầu tiên với:
 

@@ -1,0 +1,13 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Aggregated metrics across all your channels",
+  "stats": {
+    "total_channels": "Total channels",
+    "total_followers": "Total followers",
+    "scans_today": "Scans today",
+    "unread_alerts": "Unread alerts"
+  },
+  "growth_chart": "Followers growth (last 30 days)",
+  "top_channels": "Top 10 channels",
+  "no_channels_yet": "No channels yet — add your first channel to get started"
+}

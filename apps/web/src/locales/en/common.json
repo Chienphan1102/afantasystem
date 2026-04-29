@@ -1,0 +1,40 @@
+{
+  "appName": "AFANTA",
+  "tagline": "Omni-Channel Platform for Media businesses",
+  "welcome": "Welcome",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "loading": "Loading...",
+  "error": "An error occurred",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "search": "Search...",
+  "search_placeholder": "Search channels, users, commands...",
+  "settings": "Settings",
+  "profile": "Profile",
+  "language": "Language",
+  "theme": "Theme",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_system": "System",
+  "nav": {
+    "dashboard": "Dashboard",
+    "channels": "Channels",
+    "accounts": "Logged-in accounts",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "user_menu": {
+    "profile": "My profile",
+    "settings": "Settings",
+    "team": "Team management",
+    "billing": "Billing",
+    "logout": "Logout"
+  },
+  "empty_state": {
+    "no_data": "No data yet",
+    "cta": "Add your first item"
+  }
+}

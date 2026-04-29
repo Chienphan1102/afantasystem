@@ -14,5 +14,5 @@
     }
   },
   "include": ["apps/**/src/**/*", "packages/**/src/**/*", "infra/scripts/**/*"],
-  "exclude": ["node_modules", "**/dist", "**/build", "**/coverage"]
+  "exclude": ["node_modules", "**/dist", "**/build", "**/coverage", "apps/web/**"]
 }
