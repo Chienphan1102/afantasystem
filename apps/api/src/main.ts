@@ -1,4 +1,13 @@
 import 'reflect-metadata';
+
+// Patch BigInt so JSON.stringify converts it to a string instead of throwing
+// "Do not know how to serialize a BigInt". Prisma returns BigInt for the
+// subscriberCount / totalViews columns; the frontend expects strings and
+// converts back via BigInt(s).
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (this: bigint): string {
+  return this.toString();
+};
+
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
