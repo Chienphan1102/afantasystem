@@ -13,7 +13,7 @@
  *   - Anti-detection cấp độ 2 (mouse jitter, scroll quán tính)
  */
 
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext } from 'playwright';
 import type { SessionBundle } from '@afanta/crypto';
 import type {
   AdapterLogger,
@@ -24,9 +24,7 @@ import type {
   PlatformName,
   ProxyConfig,
   SessionStatus,
-  TopVideoItem,
 } from '../types';
-import { parseYouTubeCount } from './parsers';
 
 const NOOP_LOGGER: AdapterLogger = {
   log: () => undefined,
@@ -164,58 +162,155 @@ export class YouTubeAdapter implements IPlatformAdapter {
   }
 
   // ─────────────────────────────────────────────────────────────
-  async scrapeChannel(ctx: BrowserContext, channel: ChannelRef): Promise<ChannelInsightResult> {
-    const channelUrl = this.buildChannelUrl(channel);
-    const page = await ctx.newPage();
-    try {
-      this.logger.log(`[YT] Scraping ${channelUrl}`);
-
-      // ── About page → subs + total views ──────────────────────
-      await page.goto(`${channelUrl}/about`, {
-        waitUntil: 'domcontentloaded',
-        timeout: NAV_TIMEOUT_MS,
-      });
-      // YT loads about info in modal; alternatively we can read from initial data
-      const aboutData = await this.extractAboutData(page);
-
-      // ── Videos tab → top 10 recent videos ────────────────────
-      await page.goto(`${channelUrl}/videos`, {
-        waitUntil: 'domcontentloaded',
-        timeout: NAV_TIMEOUT_MS,
-      });
-      // Wait for video grid (best effort)
-      await page
-        .waitForSelector('ytd-rich-item-renderer, ytd-grid-video-renderer', {
-          timeout: 15_000,
-        })
-        .catch(() => undefined);
-
-      // Small scroll to trigger lazy-load
-      await page.evaluate(() => window.scrollBy(0, 800));
-      await page.waitForTimeout(2_000);
-
-      const topVideos = await this.extractTopVideos(page);
-
-      const result: ChannelInsightResult = {
-        scrapedAt: new Date(),
-        subscriberCount: aboutData.subscriberCount,
-        totalViews: aboutData.totalViews,
-        watchTimeMinutes: 0, // Phase 2: từ Studio Analytics
-        topVideos,
-        rawData: {
-          channelHandle: aboutData.handle,
-          channelDescription: aboutData.description,
-          videoCountSeen: topVideos.length,
-        },
-      };
-
-      this.logger.log(
-        `[YT] Done: subs=${result.subscriberCount}, views=${result.totalViews}, top=${topVideos.length}`,
+  // Phase 1.1: scrape via YouTube Data API v3 (Q19=a Hybrid).
+  // The browser context is kept by the caller for verifySession only;
+  // public metrics (subs/views/videos) come from the official API
+  // because YouTube's headless DOM scrape was unreliable on modern UI.
+  // BrowserContext intentionally unused here.
+  async scrapeChannel(_ctx: BrowserContext, channel: ChannelRef): Promise<ChannelInsightResult> {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        'YOUTUBE_API_KEY missing in env. Get one at https://console.cloud.google.com — enable YouTube Data API v3, create API key, paste into .env',
       );
-      return result;
-    } finally {
-      await page.close().catch(() => undefined);
     }
+
+    this.logger.log(`[YT] Scraping via API for ${channel.url ?? channel.externalId}`);
+
+    // ── Step 1: resolve channelId (UCxxxx) ──────────────────────
+    const channelId = await this.resolveChannelId(channel, apiKey);
+    if (!channelId) {
+      throw new Error(`Could not resolve channelId for ${channel.url ?? channel.externalId}`);
+    }
+
+    // ── Step 2: fetch channel statistics + snippet ──────────────
+    const channelData = await this.ytApi<{
+      items?: Array<{
+        id: string;
+        snippet: {
+          title: string;
+          customUrl?: string;
+          description?: string;
+          thumbnails?: { default?: { url: string }; high?: { url: string } };
+        };
+        statistics: {
+          viewCount: string;
+          subscriberCount: string;
+          videoCount: string;
+        };
+      }>;
+    }>(
+      `https://www.googleapis.com/youtube/v3/channels?id=${channelId}&part=statistics,snippet&key=${apiKey}`,
+    );
+
+    const channelItem = channelData.items?.[0];
+    if (!channelItem) {
+      throw new Error(`Channel ${channelId} not found via API`);
+    }
+
+    const subs = parseInt(channelItem.statistics.subscriberCount ?? '0', 10);
+    const views = parseInt(channelItem.statistics.viewCount ?? '0', 10);
+    const videoCount = parseInt(channelItem.statistics.videoCount ?? '0', 10);
+
+    // ── Step 3: latest 10 videos ────────────────────────────────
+    const searchData = await this.ytApi<{
+      items?: Array<{
+        id: { videoId: string };
+        snippet: {
+          title: string;
+          publishedAt: string;
+          thumbnails?: { medium?: { url: string }; high?: { url: string } };
+        };
+      }>;
+    }>(
+      `https://www.googleapis.com/youtube/v3/search?channelId=${channelId}&order=date&maxResults=10&type=video&part=snippet&key=${apiKey}`,
+    );
+
+    const videoIds = (searchData.items ?? []).map((i) => i.id.videoId).filter(Boolean);
+
+    let topVideos: ChannelInsightResult['topVideos'] = [];
+    if (videoIds.length > 0) {
+      const videosData = await this.ytApi<{
+        items?: Array<{
+          id: string;
+          snippet: {
+            title: string;
+            publishedAt: string;
+            thumbnails?: { medium?: { url: string }; high?: { url: string } };
+          };
+          statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
+        }>;
+      }>(
+        `https://www.googleapis.com/youtube/v3/videos?id=${videoIds.join(',')}&part=snippet,statistics&key=${apiKey}`,
+      );
+
+      topVideos = (videosData.items ?? []).map((v) => ({
+        externalId: v.id,
+        title: v.snippet.title,
+        url: `https://www.youtube.com/watch?v=${v.id}`,
+        thumbnailUrl: v.snippet.thumbnails?.medium?.url ?? v.snippet.thumbnails?.high?.url,
+        views: v.statistics?.viewCount ? parseInt(v.statistics.viewCount, 10) : undefined,
+        likes: v.statistics?.likeCount ? parseInt(v.statistics.likeCount, 10) : undefined,
+        comments: v.statistics?.commentCount ? parseInt(v.statistics.commentCount, 10) : undefined,
+        publishedAt: v.snippet.publishedAt,
+      }));
+    }
+
+    const result: ChannelInsightResult = {
+      scrapedAt: new Date(),
+      subscriberCount: subs,
+      totalViews: views,
+      watchTimeMinutes: 0, // Phase 2: requires OAuth + YouTube Analytics API
+      topVideos,
+      rawData: {
+        channelTitle: channelItem.snippet.title,
+        channelHandle: channelItem.snippet.customUrl ?? '',
+        channelDescription: channelItem.snippet.description ?? '',
+        thumbnailUrl:
+          channelItem.snippet.thumbnails?.high?.url ??
+          channelItem.snippet.thumbnails?.default?.url ??
+          null,
+        videoCountTotal: videoCount,
+      },
+    };
+
+    this.logger.log(
+      `[YT] Done: subs=${result.subscriberCount.toLocaleString()}, views=${result.totalViews.toLocaleString()}, top=${topVideos.length}`,
+    );
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  private async ytApi<T>(url: string): Promise<T> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`YouTube API ${res.status}: ${body.substring(0, 200)}`);
+    }
+    return (await res.json()) as T;
+  }
+
+  private async resolveChannelId(channel: ChannelRef, apiKey: string): Promise<string | null> {
+    // Already a UC-prefixed channel ID
+    if (/^UC[\w-]{20,}$/.test(channel.externalId)) {
+      return channel.externalId;
+    }
+
+    // Try as @handle via forHandle param (works for /@handle URLs)
+    if (channel.externalId.startsWith('@')) {
+      const data = await this.ytApi<{ items?: Array<{ id: string }> }>(
+        `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(channel.externalId)}&key=${apiKey}`,
+      );
+      if (data.items?.[0]?.id) return data.items[0].id;
+    }
+
+    // Try as legacy username
+    const data = await this.ytApi<{ items?: Array<{ id: string }> }>(
+      `https://www.googleapis.com/youtube/v3/channels?part=id&forUsername=${encodeURIComponent(channel.externalId.replace(/^@/, ''))}&key=${apiKey}`,
+    );
+    if (data.items?.[0]?.id) return data.items[0].id;
+
+    return null;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -228,155 +323,8 @@ export class YouTubeAdapter implements IPlatformAdapter {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────────────────────
-
-  private buildChannelUrl(channel: ChannelRef): string {
-    if (channel.url) {
-      // Strip trailing slash + any sub-path
-      return channel.url.replace(/\/$/, '').replace(/\/(about|videos|community|playlists).*$/, '');
-    }
-    if (channel.externalId.startsWith('UC')) {
-      return `https://www.youtube.com/channel/${channel.externalId}`;
-    }
-    if (channel.externalId.startsWith('@')) {
-      return `https://www.youtube.com/${channel.externalId}`;
-    }
-    return `https://www.youtube.com/${channel.externalId}`;
-  }
-
-  private async extractAboutData(page: Page): Promise<{
-    subscriberCount: number;
-    totalViews: number;
-    handle: string;
-    description: string;
-  }> {
-    // Strategy 1: read from ytInitialData (most reliable when populated)
-    const fromInitialData = await page.evaluate(() => {
-      const w = window as unknown as { ytInitialData?: unknown };
-      const data = w.ytInitialData as
-        | {
-            metadata?: {
-              channelMetadataRenderer?: {
-                title?: string;
-                description?: string;
-                vanityChannelUrl?: string;
-                channelId?: string;
-              };
-            };
-            header?: {
-              c4TabbedHeaderRenderer?: {
-                subscriberCountText?: { simpleText?: string };
-                channelHandleText?: { runs?: Array<{ text?: string }> };
-              };
-              pageHeaderRenderer?: {
-                content?: {
-                  pageHeaderViewModel?: {
-                    metadata?: {
-                      contentMetadataViewModel?: {
-                        metadataRows?: Array<{
-                          metadataParts?: Array<{ text?: { content?: string } }>;
-                        }>;
-                      };
-                    };
-                  };
-                };
-              };
-            };
-            onResponseReceivedEndpoints?: unknown;
-          }
-        | undefined;
-
-      if (!data) return null;
-      const c4 = data.header?.c4TabbedHeaderRenderer;
-      const pageHeader =
-        data.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.metadata
-          ?.contentMetadataViewModel?.metadataRows;
-
-      let subsText = '';
-      let viewsText = '';
-
-      if (c4?.subscriberCountText?.simpleText) {
-        subsText = c4.subscriberCountText.simpleText;
-      }
-
-      if (pageHeader) {
-        for (const row of pageHeader) {
-          for (const part of row.metadataParts ?? []) {
-            const text = part.text?.content;
-            if (!text) continue;
-            if (/(subscriber|người đăng ký)/i.test(text)) subsText = text;
-            if (/(view|lượt xem)/i.test(text)) viewsText = text;
-          }
-        }
-      }
-
-      return {
-        subsText,
-        viewsText,
-        handle: c4?.channelHandleText?.runs?.[0]?.text ?? '',
-        title: data.metadata?.channelMetadataRenderer?.title ?? '',
-        description: data.metadata?.channelMetadataRenderer?.description ?? '',
-      };
-    });
-
-    if (fromInitialData) {
-      return {
-        subscriberCount: parseYouTubeCount(fromInitialData.subsText),
-        totalViews: parseYouTubeCount(fromInitialData.viewsText),
-        handle: fromInitialData.handle,
-        description: fromInitialData.description,
-      };
-    }
-
-    return { subscriberCount: 0, totalViews: 0, handle: '', description: '' };
-  }
-
-  private async extractTopVideos(page: Page): Promise<TopVideoItem[]> {
-    const items = await page.evaluate(() => {
-      const cards = Array.from(
-        document.querySelectorAll('ytd-rich-item-renderer, ytd-grid-video-renderer'),
-      ).slice(0, 10);
-
-      return cards
-        .map((card) => {
-          const titleEl = card.querySelector(
-            'a#video-title-link, a#video-title',
-          ) as HTMLAnchorElement | null;
-          const url = titleEl?.href ?? '';
-          const title = titleEl?.title?.trim() ?? titleEl?.textContent?.trim() ?? '';
-          const idMatch = url.match(/[?&]v=([\w-]{11})|\/shorts\/([\w-]{11})/);
-          const externalId = (idMatch?.[1] ?? idMatch?.[2] ?? '').trim();
-
-          const metaSpans = Array.from(card.querySelectorAll('#metadata-line span')).map(
-            (s) => s.textContent?.trim() ?? '',
-          );
-          const viewsText = metaSpans.find((s) => /view|xem/i.test(s)) ?? '';
-          const publishedAt = metaSpans.find((s) => /ago|trước|tháng|năm|tuần/i.test(s));
-
-          const thumbEl = card.querySelector('img#img') as HTMLImageElement | null;
-
-          return {
-            externalId,
-            title,
-            url,
-            thumbnailUrl: thumbEl?.src ?? undefined,
-            viewsText,
-            publishedAt,
-          };
-        })
-        .filter((v) => v.externalId.length > 0);
-    });
-
-    // Parse views client-side
-    return items.map((v) => ({
-      externalId: v.externalId,
-      title: v.title,
-      url: v.url,
-      thumbnailUrl: v.thumbnailUrl,
-      views: parseYouTubeCount(v.viewsText),
-      publishedAt: v.publishedAt,
-    }));
-  }
+  // Phase 1.0 DOM-scrape helpers (extractAboutData, extractTopVideos,
+  // buildChannelUrl) removed in Phase 1.1 — replaced by YouTube Data API.
+  // If we ever need a non-API fallback in Phase 2, restore from git history
+  // commit b660bb9.
 }

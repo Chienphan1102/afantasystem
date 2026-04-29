@@ -49,7 +49,7 @@ export class ScrapeJobsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    _config: ConfigService,
+    private readonly config: ConfigService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────
@@ -151,62 +151,73 @@ export class ScrapeJobsService {
         throw new Error(`Unsupported platform: ${channel.platformAccount.platform}`);
       }
 
-      // ── Unseal session ──────────────────────────────────────
-      const aadParts = channel.platformAccount.aad.split(':');
-      if (aadParts.length !== 4) throw new Error('Malformed AAD');
-      const ctx: AadContext = {
-        tenantId: aadParts[0],
-        userId: aadParts[1],
-        platformAccountId: aadParts[2],
-        createdAt: parseInt(aadParts[3], 10),
+      const channelRef: ChannelRef = {
+        id: channel.id,
+        externalId: channel.externalId,
+        url: channel.url,
+        name: channel.name,
       };
 
-      const sessionBundle = (await unsealSession(
-        {
-          version: 1,
-          salt: Buffer.from(channel.platformAccount.salt),
-          iv: Buffer.from(channel.platformAccount.iv),
-          ciphertext: Buffer.from(channel.platformAccount.encryptedBundle),
-          tag: Buffer.from(channel.platformAccount.tag),
-          wrappedDek: Buffer.from(channel.platformAccount.wrappedDek),
-          aad: channel.platformAccount.aad,
-          argon2: { memoryCost: 65536, timeCost: 3, parallelism: 4, hashLength: 32 },
-        },
-        job.masterPassword,
-        ctx,
-      )) as SessionBundle;
-
-      // ── Init adapter context ────────────────────────────────
-      const browserCtx = await adapter.initContext(sessionBundle);
+      // ── API-key path: skip session/browser entirely ─────────
+      // YouTubeAdapter.scrapeChannel uses YouTube Data API v3 directly,
+      // so we only need to unseal the session for the eventual Studio
+      // Analytics path (Phase 2). For Phase 1, fetch public metrics
+      // straight from the API — that lets us scrape even if user forgets
+      // master password since Phase 7.
+      const apiKeyPresent = Boolean(this.config.get<string>('YOUTUBE_API_KEY'));
+      let browserCtx: Awaited<ReturnType<YouTubeAdapter['initContext']>> | null = null;
 
       try {
-        const status = await adapter.verifySession(browserCtx);
-        if (!status.ok) {
-          if (status.reason === 'CHECKPOINT') {
-            await this.prisma.platformAccount.update({
-              where: { id: channel.platformAccount.id },
-              data: { status: AccountStatus.CHECKPOINT },
-            });
-            throw new Error('Session bị CHECKPOINT — user cần re-login');
+        if (!apiKeyPresent) {
+          // Fallback: full session pipeline (legacy DOM scrape path)
+          const aadParts = channel.platformAccount.aad.split(':');
+          if (aadParts.length !== 4) throw new Error('Malformed AAD');
+          const ctx: AadContext = {
+            tenantId: aadParts[0],
+            userId: aadParts[1],
+            platformAccountId: aadParts[2],
+            createdAt: parseInt(aadParts[3], 10),
+          };
+          const sessionBundle = (await unsealSession(
+            {
+              version: 1,
+              salt: Buffer.from(channel.platformAccount.salt),
+              iv: Buffer.from(channel.platformAccount.iv),
+              ciphertext: Buffer.from(channel.platformAccount.encryptedBundle),
+              tag: Buffer.from(channel.platformAccount.tag),
+              wrappedDek: Buffer.from(channel.platformAccount.wrappedDek),
+              aad: channel.platformAccount.aad,
+              argon2: { memoryCost: 65536, timeCost: 3, parallelism: 4, hashLength: 32 },
+            },
+            job.masterPassword,
+            ctx,
+          )) as SessionBundle;
+
+          browserCtx = await adapter.initContext(sessionBundle);
+          const status = await adapter.verifySession(browserCtx);
+          if (!status.ok) {
+            if (status.reason === 'CHECKPOINT') {
+              await this.prisma.platformAccount.update({
+                where: { id: channel.platformAccount.id },
+                data: { status: AccountStatus.CHECKPOINT },
+              });
+              throw new Error('Session bị CHECKPOINT — user cần re-login');
+            }
+            if (status.reason === 'EXPIRED') {
+              await this.prisma.platformAccount.update({
+                where: { id: channel.platformAccount.id },
+                data: { status: AccountStatus.EXPIRED },
+              });
+              throw new Error('Session EXPIRED — user cần re-login');
+            }
+            throw new Error(`Verify failed: ${status.reason}`);
           }
-          if (status.reason === 'EXPIRED') {
-            await this.prisma.platformAccount.update({
-              where: { id: channel.platformAccount.id },
-              data: { status: AccountStatus.EXPIRED },
-            });
-            throw new Error('Session EXPIRED — user cần re-login');
-          }
-          throw new Error(`Verify failed: ${status.reason}`);
         }
 
-        const channelRef: ChannelRef = {
-          id: channel.id,
-          externalId: channel.externalId,
-          url: channel.url,
-          name: channel.name,
-        };
-
-        const result = await adapter.scrapeChannel(browserCtx, channelRef);
+        // adapter.scrapeChannel ignores ctx in API-key mode; we pass the
+        // browserCtx if we created one (legacy path), otherwise an empty
+        // object cast (the adapter only reads ctx when API key is missing).
+        const result = await adapter.scrapeChannel(browserCtx ?? ({} as never), channelRef);
 
         // ── Persist insight (transaction) ─────────────────────
         const minuteBucket = Math.floor(result.scrapedAt.getTime() / 60_000);
@@ -252,7 +263,7 @@ export class ScrapeJobsService {
           `[Job ${job.jobId}] DONE — subs=${result.subscriberCount}, views=${result.totalViews}`,
         );
       } finally {
-        await adapter.teardown(browserCtx).catch(() => undefined);
+        if (browserCtx) await adapter.teardown(browserCtx).catch(() => undefined);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
