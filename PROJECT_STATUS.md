@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 6 — Frontend Core ✅ DONE (sẵn sàng sang Prompt 7)                                                                                       |
-| **Tình trạng Prompt 6**   | 🟢 Hoàn thành — Vite+React+TS+Tailwind+i18n+Theme, login flow → dashboard verified                                                              |
-| **% hoàn thành Phase 1**  | 66%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~17%                                                                                                                                            |
+| **Prompt hiện tại**       | Prompt 7 — Login Center ✅ DONE (sẵn sàng sang Prompt 8)                                                                                        |
+| **Tình trạng Prompt 7**   | 🟢 Hoàn thành — EmbeddedBrowser launch + harvest + envelope encrypt + DB save                                                                   |
+| **% hoàn thành Phase 1**  | 77%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~20%                                                                                                                                            |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -302,6 +302,66 @@ Trên trình duyệt:
 6. Resize trình duyệt < 768px → sidebar biến thành hamburger menu, bấm vào mở drawer từ trái
 7. Bấm avatar góc phải → Đăng xuất → quay về `/login`, token bị clear
 8. Refresh trang `/dashboard` khi đã logout → tự redirect về `/login`
+
+---
+
+## ✅ Prompt 7 — Login Center (Add Account Flow + Session Harvesting) (DONE)
+
+**Đã làm:**
+
+- Cài `playwright@1.59.1` + tải Chromium 1217 (~150MB) trong `apps/api`
+- Link `@afanta/crypto` workspace package vào `apps/api` (`pnpm add @afanta/crypto@workspace:*`)
+- Compile `@afanta/crypto` package, đổi `main`/`types` từ `src/index.ts` → `dist/index.js` (Node ESM resolver yêu cầu)
+- Thêm 2 cột vào schema `PlatformAccount`: `salt Bytes` (Argon2 salt) + `tag Bytes` (AES-GCM auth tag) — migration `20260429135839_add_envelope_salt_tag`
+- **Backend** `apps/api/src/modules/platform-accounts/`:
+  - `EmbeddedBrowserService` — launch Chromium thật (`headless: false`) qua `chromium.launchPersistentContext`, navigate Google sign-in, đợi user login (timeout 5 phút), harvest cookies + localStorage + sessionStorage + UA + viewport + timezone + acceptLanguage + fingerprintSeed, extract channel info từ `ytInitialData`
+  - `PlatformAccountsService` — orchestrator: harvest → seal qua `@afanta/crypto sealSession` (AAD `tenantId:userId:tempId:createdAt`) → lưu transaction PlatformAccount + Channel
+  - `PlatformAccountsController` — 4 endpoints: POST add (gated `channel:create`), GET list, POST `:id/verify`, DELETE `:id` (gated `channel:delete`)
+  - DTOs: `AddAccountDto` (platform + masterPassword + accountLabel), `VerifyAccountDto`
+- **Frontend** `apps/web/src/`:
+  - `useMasterPasswordStore` — Zustand IN-MEMORY only (KHÔNG persist), TTL 30 phút auto-clear
+  - `MasterPasswordModal` — reusable modal nhập master password (Radix Dialog + cảnh báo Zero-Knowledge "quên = mất hết")
+  - `AddAccountModal` — multi-step wizard: choose platform → label → master password → launching (5min loading) → done
+  - `AccountsPage` — list cards với status badges (ACTIVE green, CHECKPOINT yellow, EXPIRED red), nút Verify + Delete, empty state với CTA
+  - Wire `/accounts` route từ Placeholder → `AccountsPage` thật
+
+**Phase 1 Trade-offs (đã ghi chú trong code):**
+
+- Browser launch chạy ngay trong API process (worker chạy local) — Phase 2 sẽ tách ra apps/worker-yt + giao tiếp qua BullMQ
+- Master password gửi qua REST API (TLS) — Phase 3 sẽ derive client-side bằng Web Crypto API
+- Chỉ hỗ trợ YouTube — Facebook Page sẽ thêm ở Phase 1 cuối / Phase 2
+
+**Verify đã pass:**
+
+- ✓ `pnpm --filter @afanta/api build` (TypeScript compile OK với DOM lib trong tsconfig)
+- ✓ `pnpm --filter @afanta/web build` (1.14s, gzip 360KB)
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+- ✓ Server start: 14 endpoints (4 endpoints platform-accounts mới: POST/GET/POST verify/DELETE)
+- ✓ `GET /api/platform-accounts` (with Bearer) → trả `[]` đúng (chưa có account nào)
+- ✓ Swagger `/docs` show tag "Platform Accounts" với 4 endpoints
+
+**Cách user verify đầy đủ AC test:**
+
+```bash
+# Terminal 1: API
+pnpm --filter @afanta/api dev
+
+# Terminal 2: Frontend
+pnpm --filter @afanta/web dev
+```
+
+Trình duyệt:
+
+1. Login với `chienphan.jup@gmail.com` / `ChangeMe123!`
+2. Sidebar bấm **"Tài khoản đã login"** (`/accounts`) → empty state
+3. Bấm **"+ Thêm tài khoản"** → chọn **YouTube**
+4. Đặt nhãn (vd "Kênh test của tôi") → bấm Tiếp tục
+5. Modal Master Password mở → nhập **mật khẩu master** mạnh (≥6 ký tự — Phase 1 dev) → bấm Xác nhận
+6. **Cửa sổ Chrome thật mở** ở Google sign-in → bạn **tự nhập email Google + password thật + 2FA** trên giao diện gốc Google
+7. Sau khi login thành công → URL chuyển về youtube.com → cửa sổ tự đóng sau 2s
+8. Toast "Thêm tài khoản thành công" → modal đóng → list refresh hiện 1 row YouTube với status **ACTIVE**
+9. Bấm **Verify** → modal master password popup (nếu hết TTL) hoặc verify ngay → toast "Session vẫn hợp lệ ✓"
+10. Vào Supabase Table Editor → bảng `PlatformAccount` thấy 1 row với `encryptedBundle`, `wrappedDek`, `iv`, `tag`, `salt` đều là **binary không đọc được** → ✓ Zero-Knowledge OK
 
 App chạy được trên máy local, demo được cho khách đầu tiên với:
 

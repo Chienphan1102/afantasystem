@@ -282,7 +282,9 @@ model PlatformAccount {
   // Encrypted bundle (Envelope Encryption — see packages/crypto)
   encryptedBundle Bytes
   wrappedDek      Bytes
-  iv              Bytes
+  iv              Bytes // AES-GCM IV (12 bytes)
+  tag             Bytes // AES-GCM auth tag (16 bytes)
+  salt            Bytes // Argon2id salt (16 bytes)
   aad             String
 
   // Fingerprint (must stay consistent across re-uses)

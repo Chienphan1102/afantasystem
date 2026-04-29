@@ -18,6 +18,7 @@ import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { HealthModule } from './modules/health/health.module';
+import { PlatformAccountsModule } from './modules/platform-accounts/platform-accounts.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { HealthModule } from './modules/health/health.module';
     RolesModule,
     GroupsModule,
     HealthModule,
+    PlatformAccountsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

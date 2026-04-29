@@ -6,6 +6,7 @@ import { AuthLayout } from '@/components/layout/auth-layout';
 import { AppLayout } from '@/components/layout/app-layout';
 import { LoginPage } from '@/pages/login-page';
 import { DashboardPage } from '@/pages/dashboard-page';
+import { AccountsPage } from '@/pages/accounts-page';
 import { PlaceholderPage } from '@/pages/placeholder-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { useTranslation } from 'react-i18next';
@@ -39,15 +40,7 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/accounts"
-            element={
-              <PlaceholderPage
-                title={t('nav.accounts')}
-                description="Login Center sẽ build ở Prompt 7."
-              />
-            }
-          />
+          <Route path="/accounts" element={<AccountsPage />} />
           <Route
             path="/reports"
             element={<PlaceholderPage title={t('nav.reports')} description="Phase 2." />}

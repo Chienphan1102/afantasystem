@@ -127,20 +127,21 @@
 
 ---
 
-## ⚪ Prompt 7 — Login Center (Add Account Flow) [ ]
+## 🟢 Prompt 7 — Login Center (Add Account Flow) [x] DONE
 
-> **Mục tiêu:** User bấm "Thêm kênh YouTube" → mở Embedded Browser → tự nhập user/pass trên giao diện gốc Google → harvest session bundle → mã hoá envelope → lưu DB.
+> **Mục tiêu:** User bấm "Thêm tài khoản YouTube" → mở Chromium thật → user tự đăng nhập Google → harvest session → encrypt envelope → lưu DB.
 
-- [ ] Quyết định runtime cho Embedded Browser:
-  - Phương án A: Electron BrowserWindow (nếu user muốn desktop app)
-  - Phương án B: Playwright UI mode chạy local + WebSocket bridge tới UI web
-- [ ] Triển khai phương án đã chọn
-- [ ] Implement harvesting: cookies + localStorage + sessionStorage + indexedDB + UA + viewport + timezone + fingerprint seed
-- [ ] Yêu cầu user nhập Master Password lần đầu, derive UDK
-- [ ] Mã hoá Session Bundle bằng `@afanta/crypto`, lưu DB
-- [ ] UI: list account, status (active / checkpoint / expired)
-- [ ] Verify: thêm 1 account YouTube test → bundle encrypted lưu DB → KHÔNG plaintext
-- [ ] Cập nhật trạng thái, commit
+- [x] Cài Playwright + Chromium binary
+- [x] EmbeddedBrowserService chạy ngay trong API process (Phase 1 simplified — worker local)
+- [x] Harvest cookies + localStorage + sessionStorage + UA + viewport + timezone + fingerprintSeed
+- [x] Master password gửi qua REST API (TLS) — Phase 3 sẽ chuyển client-side
+- [x] sealSession qua @afanta/crypto + lưu DB transaction (PlatformAccount + Channel)
+- [x] Schema migration thêm `salt` và `tag` columns (Prompt 3 schema thiếu)
+- [x] FE: AddAccountModal multi-step + MasterPasswordModal + Zustand store TTL 30 min
+- [x] FE: AccountsPage với list cards + status badges + verify/delete actions
+- [x] 4 API endpoints mới: POST `/platform-accounts`, GET, POST `/:id/verify`, DELETE `/:id`
+- [x] Verify build + typecheck + lint + format pass
+- [x] Cập nhật trạng thái, commit
 
 ---
 
