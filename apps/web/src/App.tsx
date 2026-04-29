@@ -7,6 +7,8 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { LoginPage } from '@/pages/login-page';
 import { DashboardPage } from '@/pages/dashboard-page';
 import { AccountsPage } from '@/pages/accounts-page';
+import { ChannelsPage } from '@/pages/channels-page';
+import { ChannelDetailPage } from '@/pages/channel-detail-page';
 import { PlaceholderPage } from '@/pages/placeholder-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { useTranslation } from 'react-i18next';
@@ -31,15 +33,8 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route
-            path="/channels"
-            element={
-              <PlaceholderPage
-                title={t('nav.channels')}
-                description="Sẽ build ở Prompt 8-9 (YouTube Adapter + Dashboard MVP)."
-              />
-            }
-          />
+          <Route path="/channels" element={<ChannelsPage />} />
+          <Route path="/channels/:id" element={<ChannelDetailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route
             path="/reports"

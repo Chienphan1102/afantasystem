@@ -19,6 +19,8 @@ import { RolesModule } from './modules/roles/roles.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { HealthModule } from './modules/health/health.module';
 import { PlatformAccountsModule } from './modules/platform-accounts/platform-accounts.module';
+import { ChannelsModule } from './modules/channels/channels.module';
+import { ScrapeJobsModule } from './modules/scrape-jobs/scrape-jobs.module';
 
 @Module({
   imports: [
@@ -55,7 +57,9 @@ import { PlatformAccountsModule } from './modules/platform-accounts/platform-acc
     RolesModule,
     GroupsModule,
     HealthModule,
+    ScrapeJobsModule,
     PlatformAccountsModule,
+    ChannelsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

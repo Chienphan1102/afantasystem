@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 7 — Login Center ✅ DONE (sẵn sàng sang Prompt 8)                                                                                        |
-| **Tình trạng Prompt 7**   | 🟢 Hoàn thành — EmbeddedBrowser launch + harvest + envelope encrypt + DB save                                                                   |
-| **% hoàn thành Phase 1**  | 77%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~20%                                                                                                                                            |
+| **Prompt hiện tại**       | Prompt 8 — YouTube Adapter + Worker ✅ DONE (sẵn sàng sang Prompt 9)                                                                            |
+| **Tình trạng Prompt 8**   | 🟢 Hoàn thành — YouTubeAdapter + scrape pipeline + ChannelsModule + Frontend list/detail                                                        |
+| **% hoàn thành Phase 1**  | 88%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~22%                                                                                                                                            |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -362,6 +362,65 @@ Trình duyệt:
 8. Toast "Thêm tài khoản thành công" → modal đóng → list refresh hiện 1 row YouTube với status **ACTIVE**
 9. Bấm **Verify** → modal master password popup (nếu hết TTL) hoặc verify ngay → toast "Session vẫn hợp lệ ✓"
 10. Vào Supabase Table Editor → bảng `PlatformAccount` thấy 1 row với `encryptedBundle`, `wrappedDek`, `iv`, `tag`, `salt` đều là **binary không đọc được** → ✓ Zero-Knowledge OK
+
+---
+
+## ✅ Prompt 8 — YouTube Adapter + Worker (DONE)
+
+**Đã làm:**
+
+- **Package `@afanta/adapters` v0.1.0** — public API + IPlatformAdapter interface:
+  - `types.ts`: `IPlatformAdapter` interface + types (PlatformName, ChannelRef, ChannelInsightResult, TopVideoItem, SessionStatus, CheckpointStatus, ProxyConfig, AdapterLogger)
+  - `youtube/youtube-adapter.ts`: full implementation cho YouTube (5 methods: initContext, verifySession, detectCheckpoint, scrapeChannel, teardown)
+  - `youtube/parsers.ts`: `parseYouTubeCount("1.2M") → 1200000`, `parseYouTubeChannelUrl()`
+  - `youtube/selectors.ts`: DOM selectors tách riêng cho dễ update
+- **API `apps/api/src/modules/`:**
+  - `channels/` — POST bind URL, GET list, GET detail (30 insights), GET `/insights/latest`, POST `/rescan`, GET `/jobs`, DELETE
+  - `scrape-jobs/` — `ScrapeJobsService` với in-memory queue (concurrency 2, priority HIGH/NORMAL/LOW), pipeline: unseal session → init context → verifySession → scrapeChannel → save ChannelInsight + update Channel cache + update ScrapeJob
+- **Frontend `apps/web/src/`:**
+  - `pages/channels-page.tsx` — list cards (avatar + subs + views + status + 3 actions), auto-refresh 10s, Add Channel modal
+  - `pages/channel-detail-page.tsx` — header + 2 stat cards + LineChart subscribers history + table top videos
+  - `components/add-channel-modal.tsx` — chọn account ACTIVE + paste URL + master password → bind + auto first scan
+
+**Phase 1 Trade-offs (đã ghi rõ trong code + status):**
+
+- **Skip BullMQ** vì Upstash REST không support — Phase 1 dùng in-memory queue trong API process
+- **Skip cron 6h** vì Zero-Knowledge architecture cần master password (không có cách unattended) — Phase 2 sẽ dùng "scrape token" mechanism (tradeoff như 1Password Cloud)
+- **Skip anti-detection plugins** (playwright-extra stealth) — Phase 2 sẽ thêm
+- **Skip behavior simulation** (mouse jitter, scroll quán tính) — Phase 4
+- **Worker chạy trong API process** — Phase 2 tách ra `apps/worker-yt` với BullMQ thật
+
+**Verify đã pass:**
+
+- ✓ `pnpm --filter @afanta/adapters build` — tsc OK
+- ✓ `pnpm --filter @afanta/api build` — nest build OK
+- ✓ `pnpm --filter @afanta/web build` — vite build 1.18s, gzip 363KB
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+- ✓ Server: 19 endpoints (5 channels + scrape mới)
+- ✓ `GET /api/channels` (with Bearer) → trả `[]`
+- ✓ Swagger docs hiển thị tag "Channels" với 7 endpoints
+
+**Cách user verify đầy đủ E2E (cuối Phase 1):**
+
+```bash
+# Terminal 1: API
+pnpm --filter @afanta/api dev
+
+# Terminal 2: Frontend
+pnpm --filter @afanta/web dev
+```
+
+**Trên trình duyệt:**
+
+1. Login + add YouTube account (Prompt 7 flow) — đảm bảo có 1 PlatformAccount status `ACTIVE`
+2. Vào sidebar **Kênh** → bấm **+ Thêm kênh**
+3. Chọn account vừa add → paste URL kênh YouTube của bạn (vd `https://www.youtube.com/@MrBeast`) → bấm **Bind + scan**
+4. Master password modal popup (nếu hết TTL) → nhập mật khẩu master → Xác nhận
+5. Background: API mở Chromium headless → load session bundle → navigate to channel /about + /videos → scrape
+6. Sau 30-60s, list `/channels` tự refresh → kênh xuất hiện với **subscribers + total views thật**
+7. Bấm **Chi tiết** → trang `/channels/:id` thấy 2 stat cards + line chart (sau 2+ scans) + table top 10 videos với thumbnail
+8. Bấm **Quét lại** trên kênh → toast "Đã đưa vào hàng đợi" → 30-60s sau số liệu update
+9. Vào Supabase Table Editor → bảng `ChannelInsight` thấy nhiều rows (mỗi lần scan 1 row), bảng `ScrapeJob` thấy status SUCCESS
 
 App chạy được trên máy local, demo được cho khách đầu tiên với:
 

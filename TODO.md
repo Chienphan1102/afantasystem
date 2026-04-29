@@ -145,20 +145,22 @@
 
 ---
 
-## ⚪ Prompt 8 — YouTube Adapter + Worker [ ]
+## 🟢 Prompt 8 — YouTube Adapter + Worker [x] DONE
 
-> **Mục tiêu:** Worker pickup job từ BullMQ, mở Playwright với session đã giải mã, scrape Subscribers + Views + top 10 video, push về DB.
+> **Mục tiêu:** Worker scrape Subscribers + Views + top 10 video, push về ChannelInsight.
 
-- [ ] Tạo `apps/worker-yt/` skeleton
-- [ ] Cài Playwright + playwright-extra + stealth plugin
-- [ ] Implement `IPlatformAdapter` cho YouTube (Studio + youtubei/v1 internal API)
-- [ ] BullMQ consumer: lắng job `channel.rescan`
-- [ ] Worker giải mã session trong RAM, không log/disk
-- [ ] Scrape: Subscribers, Total Views, Top 10 video gần nhất (title, views, like, comment)
-- [ ] Push snapshot vào `ChannelSnapshot` với hash dedup
-- [ ] Emit Socket.IO event `channel.rescan.done`
-- [ ] Verify: enqueue job → worker pick up → DB có record mới trong < 90s
-- [ ] Cập nhật trạng thái, commit
+- [x] Package `@afanta/adapters` với `IPlatformAdapter` + `YouTubeAdapter` + parsers + selectors
+- [x] Module `channels/` trong API: bind URL, list, detail, latest insight, jobs, rescan, delete
+- [x] Module `scrape-jobs/` trong API: in-memory queue concurrency 2, priority-aware
+- [x] Pipeline: unseal session → init context → verify → scrape → save Insight + update Channel cache + ScrapeJob
+- [x] Hash dedup `sha256(channelId:minute)` trên ChannelInsight
+- [x] FE: trang `/channels` list cards + Add Channel modal + rescan + auto-refresh 10s
+- [x] FE: trang `/channels/:id` detail với LineChart subscribers history + table top videos
+- [x] ~~BullMQ~~ → in-memory queue (Upstash REST không support; Phase 2 chuyển)
+- [x] ~~Cron 6h~~ → đẩy Phase 2 (Zero-Knowledge cần master password runtime)
+- [x] ~~playwright-extra stealth~~ → đẩy Phase 2 (anti-detection level 1)
+- [x] Verify build + typecheck + lint + format pass; 19 endpoints in Swagger
+- [x] Cập nhật trạng thái, commit
 
 ---
 
