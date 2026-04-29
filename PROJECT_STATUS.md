@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 2 — Setup hạ tầng dev ✅ DONE (sẵn sàng sang Prompt 3)                                                                                   |
-| **Tình trạng Prompt 2**   | 🟢 Hoàn thành — monorepo + Git + cloud test pass                                                                                                |
-| **% hoàn thành Phase 1**  | 22%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~6%                                                                                                                                             |
+| **Prompt hiện tại**       | Prompt 3 — Database & Prisma Schema ✅ DONE (sẵn sàng sang Prompt 4)                                                                            |
+| **Tình trạng Prompt 3**   | 🟢 Hoàn thành — 19 models + 9 enums migrated lên Supabase, seed Owner xong                                                                      |
+| **% hoàn thành Phase 1**  | 33%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~9%                                                                                                                                             |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -58,7 +58,7 @@
 - 🔐 Keys đã paste trong chat → coi là **dev-only**, rotate trước Phase 3
 - 🔐 Vault tạm = `.env` Phase 1 → upgrade HashiCorp Cloud Vault Phase 3
 - 🐳 Không có Docker → workers chạy native trên PC. Phase 2 deploy phải có VPS Linux có Docker
-- 🔑 DB password Supabase chưa có → DATABASE_URL trong `.env` còn placeholder, sẽ điền ở Prompt 3
+- 🔑 DB password Supabase đã paste trong chat (cuối Prompt 2) → coi là **dev-only**, **rotate trước Phase 3**
 
 ---
 
@@ -84,6 +84,46 @@
 - ✓ `pnpm lint` (ESLint 0 errors)
 - ✓ `pnpm cloud:test`: Supabase REST OK, Upstash Redis PONG OK
 - ✓ `git status`: `.env` đúng nằm trong gitignore, không bị track
+
+---
+
+## ✅ Prompt 3 — Database & Prisma Schema (DONE)
+
+**Đã làm:**
+
+- Cài Prisma 6.19.3 (downgrade từ v7 vì v7 bỏ cú pháp `url = env(...)` trong schema)
+- Cài `@prisma/client`, `bcrypt`, `@types/bcrypt`
+- Viết `prisma/schema.prisma` với **19 models** + **9 enums**:
+  - 19 models: Tenant, User, Group, Team, GroupMember, Role, Permission, RolePermission, UserRole, PlatformAccount, Channel, ChannelAssignment, ScrapeJob, ChannelInsight, ProxyPool, ProxyAssignment, AuditLog, AlertRule, AlertEvent
+  - 9 enums: PlatformName, RoleType, JobStatus, JobPriority, ProxyType, ProxyStatus, AccountStatus, ChannelStatus, AuditResult
+- Cấu hình Supabase URLs (region `aws-1-ap-southeast-2` Sydney, KHÔNG phải Singapore):
+  - DATABASE_URL: transaction pooler (port 6543) + `?pgbouncer=true`
+  - DIRECT_URL: session pooler (port 5432) — dùng cho migrations
+- Chạy `prisma migrate dev --name init` → tạo migration `20260429103508_init` lên Supabase
+- Viết `prisma/seed.ts` (idempotent, dùng upsert):
+  - 37 Permissions (theo Phần E.2 của MASTER_PLAN)
+  - Tenant `Demo Media Co.` (slug `demo-media-co`)
+  - 7 Roles hệ thống (Owner, SuperAdmin, GroupAdmin, TeamLead, User, Viewer, Custom)
+  - 97 RolePermission rows (mapping Role↔Permission)
+  - Group `Marketing Team`
+  - Owner User `chienphan.jup@gmail.com` (password `ChangeMe123!`, mustChangePassword=true)
+- Đăng ký script `prisma.seed: tsx prisma/seed.ts` trong root `package.json`
+
+**Verify đã pass:**
+
+- ✓ `pnpm exec prisma validate` (Schema valid)
+- ✓ `pnpm exec prisma migrate dev` (1 migration applied)
+- ✓ `pnpm prisma db seed` (Owner user, role, group đều OK)
+- ✓ `pnpm exec tsx infra/scripts/verify-db.ts` đếm chính xác record
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+
+**Cách user verify:**
+
+1. Vào Supabase Dashboard → Table Editor → thấy 19 bảng
+2. Bảng `Tenant` có 1 record "Demo Media Co."
+3. Bảng `User` có 1 record `chienphan.jup@gmail.com`
+4. Bảng `Permission` có 37 record
+5. Hoặc chạy `pnpm exec prisma studio` (mở port 5555) để browse data trực quan
 
 ---
 

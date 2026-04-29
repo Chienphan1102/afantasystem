@@ -45,20 +45,19 @@
 
 ---
 
-## ⚪ Prompt 3 — Database & Prisma Schema [ ]
+## 🟢 Prompt 3 — Database & Prisma Schema [x] DONE
 
-> **Mục tiêu:** Có Prisma schema đủ cho Phase 1: User, Role, Permission, Tenant, Channel, Session, Insight, AuditLog.
+> **Mục tiêu:** Có Prisma schema enterprise đầy đủ, migrate xong, seed data mẫu.
 
-- [ ] Cài `prisma` ở root, init schema
-- [ ] Định nghĩa model: `User`, `Tenant`, `Role`, `Permission`
-- [ ] Định nghĩa model: `Channel`, `Platform` (enum: YOUTUBE, FACEBOOK)
-- [ ] Định nghĩa model: `EncryptedSession` (cho Envelope Encryption — chứa wrappedDek, encryptedBundle, iv, aad)
-- [ ] Định nghĩa model: `ChannelSnapshot` (timestamp + metrics: subscribers, views, ...)
-- [ ] Định nghĩa model: `AuditLog` (append-only, indexed theo userId/tenantId)
-- [ ] Chạy `prisma migrate dev` tạo migration đầu tiên
-- [ ] Tạo seed file: 1 Tenant mặc định + 1 Owner user
-- [ ] Verify: `prisma studio` mở được, thấy data seed
-- [ ] Cập nhật trạng thái, commit
+- [x] Cài Prisma 6.19.3 + @prisma/client + bcrypt
+- [x] Schema 19 models: Tenant, User, Group, Team, GroupMember, Role, Permission, RolePermission, UserRole, PlatformAccount, Channel, ChannelAssignment, ScrapeJob, ChannelInsight, ProxyPool, ProxyAssignment, AuditLog, AlertRule, AlertEvent
+- [x] 9 enums: PlatformName, RoleType, JobStatus, JobPriority, ProxyType, ProxyStatus, AccountStatus, ChannelStatus, AuditResult
+- [x] Cấu hình DATABASE_URL (transaction pooler 6543) + DIRECT_URL (session pooler 5432) cho Supabase region Sydney
+- [x] `prisma migrate dev --name init` → migration `20260429103508_init` đã apply lên Supabase
+- [x] Seed: 37 Permissions, 1 Tenant, 7 Roles (97 RolePermission), 1 Group, 1 Owner User
+- [x] Script `prisma.seed: tsx prisma/seed.ts` trong package.json
+- [x] Verify count records bằng `infra/scripts/verify-db.ts`
+- [x] Cập nhật trạng thái, commit
 
 ---
 
