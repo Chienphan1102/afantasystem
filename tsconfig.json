@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@afanta/shared-types": ["packages/shared-types/src"],
+      "@afanta/shared-types/*": ["packages/shared-types/src/*"],
+      "@afanta/crypto": ["packages/crypto/src"],
+      "@afanta/crypto/*": ["packages/crypto/src/*"],
+      "@afanta/adapters": ["packages/adapters/src"],
+      "@afanta/adapters/*": ["packages/adapters/src/*"],
+      "@afanta/proxy-manager": ["packages/proxy-manager/src"],
+      "@afanta/proxy-manager/*": ["packages/proxy-manager/src/*"]
+    }
+  },
+  "include": ["apps/**/src/**/*", "packages/**/src/**/*", "infra/scripts/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/build", "**/coverage"]
+}

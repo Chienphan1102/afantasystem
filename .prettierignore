@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+.turbo
+coverage
+playwright-report
+*.tsbuildinfo
+pnpm-lock.yaml
+.env
+.env.*
+
+# Tài liệu gốc của user — KHÔNG động vào
+AFANTA_MASTER_PLAN_v2.md
+.claude/

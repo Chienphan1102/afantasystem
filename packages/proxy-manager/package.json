@@ -1,0 +1,15 @@
+{
+  "name": "@afanta/proxy-manager",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AFANTA — Proxy pool, health check, geo matching (Phase 2+)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo 'no tests yet'",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

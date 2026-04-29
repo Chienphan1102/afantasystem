@@ -1,0 +1,14 @@
+{
+  "name": "@afanta/worker-yt",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AFANTA — Worker quét YouTube (Playwright + BullMQ)",
+  "scripts": {
+    "dev": "echo 'TODO: Worker dev (Prompt 8)'",
+    "build": "echo 'TODO: Worker build (Prompt 8)'",
+    "test": "echo 'no tests yet'",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

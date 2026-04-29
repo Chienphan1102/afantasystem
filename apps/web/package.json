@@ -1,0 +1,14 @@
+{
+  "name": "@afanta/web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AFANTA — Frontend (React + Vite)",
+  "scripts": {
+    "dev": "echo 'TODO: Vite dev (Prompt 6)'",
+    "build": "echo 'TODO: Vite build (Prompt 6)'",
+    "test": "echo 'no tests yet'",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

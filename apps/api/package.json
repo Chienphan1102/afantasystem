@@ -1,0 +1,14 @@
+{
+  "name": "@afanta/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AFANTA — Backend API (NestJS)",
+  "scripts": {
+    "dev": "echo 'TODO: NestJS dev (Prompt 4)'",
+    "build": "echo 'TODO: NestJS build (Prompt 4)'",
+    "test": "echo 'no tests yet'",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
