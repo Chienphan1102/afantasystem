@@ -1,15 +1,19 @@
 {
   "name": "@afanta/crypto",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "description": "AFANTA — Argon2id + AES-256-GCM + AES-KW (Envelope Encryption)",
+  "description": "AFANTA — Envelope Encryption (Argon2id + AES-256-GCM + AES-KW)",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc",
-    "test": "echo 'TODO: Vitest unit tests (Prompt 5)'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "argon2": "^0.44.0"
+  },
   "devDependencies": {}
 }

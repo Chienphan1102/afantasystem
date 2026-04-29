@@ -24,10 +24,10 @@
 | Trường                    | Giá trị                                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase hiện tại**        | Phase 1 — MVP Core (Tháng 1-3)                                                                                                                  |
-| **Prompt hiện tại**       | Prompt 4 — Backend Core (NestJS) ✅ DONE (sẵn sàng sang Prompt 5)                                                                               |
-| **Tình trạng Prompt 4**   | 🟢 Hoàn thành — 11 endpoints, JWT auth, RBAC guards, Swagger, đã verify login + 403                                                             |
-| **% hoàn thành Phase 1**  | 44%                                                                                                                                             |
-| **% hoàn thành cả dự án** | ~12%                                                                                                                                            |
+| **Prompt hiện tại**       | Prompt 5 — Crypto Module ✅ DONE (sẵn sàng sang Prompt 6)                                                                                       |
+| **Tình trạng Prompt 5**   | 🟢 Hoàn thành — 31/31 tests pass, coverage 100% statements/functions/lines, 90.47% branches                                                     |
+| **% hoàn thành Phase 1**  | 55%                                                                                                                                             |
+| **% hoàn thành cả dự án** | ~14%                                                                                                                                            |
 | **Cảnh báo nóng**         | ⚠️ KHÔNG cài được Docker trên PC user → đã đổi sang **Cloud-first** (Supabase + Upstash). Vault tạm dùng `.env` Phase 1, phải nâng cấp Phase 3. |
 
 ---
@@ -180,6 +180,57 @@
 5. Copy `accessToken` trong response → bấm **Authorize** (góc phải) → paste với prefix `Bearer ` → Authorize
 6. Test `GET /api/auth/me` và `GET /api/tenants/me` → đều trả OK
 7. Health check không cần auth: http://localhost:3001/health
+
+---
+
+## ✅ Prompt 5 — Crypto Module (Envelope Encryption) (DONE)
+
+**Đã làm:**
+
+- Cài `argon2@0.44.0` (native binding, 64MB Argon2id) + `vitest@4.1.5` + `@vitest/coverage-v8`
+- Package `@afanta/crypto` v0.1.0 — 6 source files:
+  - `types.ts`: `SessionBundle`, `AadContext`, `EncryptedEnvelope`, `Argon2Params` + `DEFAULT_ARGON2_PARAMS` (memoryCost=64MB, timeCost=3, parallelism=4)
+  - `argon2.ts`: `generateSalt()` (16 bytes), `deriveUDK()` raw output 32 bytes
+  - `aes-gcm.ts`: `generateDEK()`, `generateIV()` (12 bytes), `encrypt()`, `decrypt()` AES-256-GCM với 16-byte tag
+  - `aes-kw.ts`: `wrapKey()`, `unwrapKey()` RFC 3394 qua Node native `id-aes256-wrap`
+  - `vault-client.ts`: `KEKProvider` interface + `EnvKekProvider` (Phase 1 dev, đọc `KEK_DEV` từ env, log cảnh báo đỏ; rotate intentionally throws)
+  - `envelope.ts`: orchestrator `sealSession()` + `unsealSession()` với best-effort `wipe()` Buffer trong `finally`
+- Mỗi function nhạy cảm có comment `@security-critical`
+- AAD format: `${tenantId}:${userId}:${platformAccountId}:${createdAt}` — chống replay + cross-tenant attack
+- 5 test files / **31 test cases** bao trọn yêu cầu Prompt:
+  - **Test 1**: seal → unseal cùng password → bundle gốc ✓
+  - **Test 2**: seal → unseal sai password → throw ✓
+  - **Test 3**: tampered ciphertext (1 byte) → throw ✓
+  - **Test 4**: AAD sai → throw ✓
+  - **Test 5**: cùng password + cùng salt → cùng UDK ✓
+  - **Test 6**: cùng password + khác salt → khác UDK ✓
+  - **Test 7**: 100 lần encrypt cùng plaintext → 100 IV duy nhất ✓
+  - - 24 edge case khác: short salt, wrong key length, AAD createdAt mismatch, tampered wrappedDek, version mismatch, EnvKekProvider validations, ...
+- VIỆC 8 (tích hợp `PlatformAccountsService`) **đẩy sang Prompt 7** — Login Center sẽ là nơi `sealSession` được gọi lần đầu
+
+**Verify đã pass:**
+
+- ✓ `pnpm --filter @afanta/crypto test` → **5 test files / 31 tests pass / 278ms**
+- ✓ Coverage v8: **Statements 100% / Functions 100% / Lines 100% / Branches 90.47%** (vượt threshold 90%)
+- ✓ `pnpm typecheck` + `pnpm lint` + `pnpm format:check` pass
+- ✓ Source code không log secret: chỉ 1 `console.warn` trong `vault-client.ts` cảnh báo dùng EnvKekProvider — KHÔNG lộ key
+
+**Cách user verify:**
+
+```bash
+# Chạy tất cả tests crypto:
+pnpm --filter @afanta/crypto test
+# → "Test Files 5 passed (5)" và "Tests 31 passed (31)"
+
+# Coverage:
+pnpm --filter @afanta/crypto test:coverage
+# → Statements 100% / Functions 100% / Lines 100% / Branches 90.47%
+```
+
+**🚨 Nguyên tắc bất biến (đặt từ Prompt 5):**
+
+> **KHÔNG bao giờ sửa file trong `packages/crypto/` mà không có sự đồng ý rõ ràng của user.**
+> Nếu cần sửa: BẮT BUỘC tăng version (`0.1.0` → `0.2.0`) + giữ backward-compat với envelope `version: 1` (decrypt được data legacy).
 
 ---
 

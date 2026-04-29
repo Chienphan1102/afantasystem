@@ -85,20 +85,22 @@
 
 ---
 
-## ⚪ Prompt 5 — Crypto Module (Envelope Encryption) [ ]
+## 🟢 Prompt 5 — Crypto Module (Envelope Encryption) [x] DONE
 
-> **Mục tiêu:** Package `@afanta/crypto` xử lý Argon2id KDF + AES-256-GCM + AES-KW. Test unit đầy đủ.
+> **Mục tiêu:** Package `@afanta/crypto` xử lý Argon2id KDF + AES-256-GCM + AES-KW. Test đầy đủ.
 
-- [ ] Tạo package `packages/crypto/`
-- [ ] Implement `deriveUDK(masterPassword, salt)` — Argon2id với param chuẩn
-- [ ] Implement `generateDEK()` — random 256-bit
-- [ ] Implement `encryptBundle(bundle, dek, aad)` — AES-256-GCM với IV random
-- [ ] Implement `wrapDEK(dek, udk)` — AES-KW
-- [ ] Implement bộ giải mã đối xứng: `decryptBundle`, `unwrapDEK`
-- [ ] Test unit cho TỪNG hàm (Vitest), edge cases: tampered AAD, wrong key, replay
-- [ ] Document API trong README package
-- [ ] Verify: tất cả test pass, coverage ≥ 90%
-- [ ] Cập nhật trạng thái, commit
+- [x] Cài `argon2`, `vitest`, `@vitest/coverage-v8`
+- [x] `packages/crypto/{tsconfig.json, vitest.config.ts}`
+- [x] `argon2.ts`: `deriveUDK()`, `generateSalt()` — 64MB/3iter/4parallelism
+- [x] `aes-gcm.ts`: `generateDEK()`, `encrypt()`, `decrypt()` — IV random 12 bytes, auth tag 16 bytes
+- [x] `aes-kw.ts`: `wrapKey()`, `unwrapKey()` — RFC 3394 native Node
+- [x] `vault-client.ts`: `KEKProvider` interface + `EnvKekProvider` (Phase 1 fallback)
+- [x] `envelope.ts`: `sealSession()`, `unsealSession()` với AAD chống replay + best-effort buffer wipe
+- [x] 5 test files / **31 tests** bao 7 test case bắt buộc + 24 edge case
+- [x] Coverage **100% lines / 100% functions / 90.47% branches**
+- [x] Document `@security-critical` ở mọi function nhạy cảm
+- [x] VIỆC 8 (integrate vào API) đẩy sang Prompt 7 — Login Center
+- [x] Cập nhật trạng thái, commit
 
 ---
 

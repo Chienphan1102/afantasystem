@@ -27,6 +27,7 @@
     "@prisma/client": "^6.19.3",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^4.1.5",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.4.5",
     "eslint": "^9.16.0",
@@ -36,7 +37,8 @@
     "prisma": "^6.19.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.0"
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^4.1.5"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -53,6 +55,7 @@
       "@prisma/client",
       "@prisma/engines",
       "@scarf/scarf",
+      "argon2",
       "bcrypt",
       "esbuild",
       "prisma"
